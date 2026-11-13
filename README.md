@@ -22,6 +22,12 @@ Demand depends on fan support, fan-base size, recent form, league position, and 
 
 Existing saves receive supporter data automatically. Reloading or changing ticket prices does not directly change support; reactions happen at matches. The fan base and support persist into the next season.
 
+## Unique player names
+
+Players are named from thousands of combinations across 14 regional name pools. Names are reserved for the entire career, including sold players and expired transfer listings, so refreshes and reloads do not reuse them. Very long careers can generate additional names with middle names when the base pool is exhausted.
+
+Existing saves automatically rename duplicate entries, preserving the first squad player with each name and keeping every player’s ID, rating, wages, and other attributes. An explicit new career starts a new name registry.
+
 ## Deploy to Cloudflare Workers
 
 Connect this repository to Cloudflare Workers Builds. Leave the build command empty and use `npx wrangler deploy` as the deploy command, with the repository root as the working directory. `wrangler.jsonc` serves the game from `public/`.
@@ -30,8 +36,10 @@ For Cloudflare Pages, select no framework, leave the build command empty, and us
 
 ## Tests
 
-Requires Node.js. Run `node tests/selection.cjs` and `node tests/team-talk.cjs`, and `node tests/fans.cjs` from the repository root. This checks Auto-pick with exhausted players, empty-slot selection, direct replacement, injury rules, formation changes, and match progression. Team-talk tests cover diminishing gains, repeated clicks, the three-match cooldown, reload persistence, season boundaries, and existing saves.
+Requires Node.js. Run `node tests/selection.cjs`, `node tests/team-talk.cjs`, `node tests/fans.cjs`, and `node tests/names.cjs` from the repository root. This checks Auto-pick with exhausted players, empty-slot selection, direct replacement, injury rules, formation changes, and match progression. Team-talk tests cover diminishing gains, repeated clicks, the three-match cooldown, reload persistence, season boundaries, and existing saves.
 
 All players and clubs are fictional. Match outcomes are simulated locally; no AI service or API key is required.
 
 Fan tests cover price-sensitive demand, ticket revenue tradeoffs, fan reactions, stadium expansion, match accounting, reloads, and old-save migration.
+
+Name tests generate thousands of players and check uniqueness, pool exhaustion, reloads, retired names, old-save repairs, season refreshes, and explicit career resets.
