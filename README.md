@@ -14,6 +14,14 @@ Open **Squad**, then click a position on the pitch to select or replace its play
 
 Team talks give up to +4 morale to each player, with smaller gains as confidence rises. A talk cannot raise morale above 80. Play three matches between talks; reloading and changing seasons preserve the cooldown. The Training screen shows when the next talk is available. Existing careers are upgraded automatically.
 
+## Supporters and ticket prices
+
+Fan support is rated from 0 to 100 and affects attendance. Wins lift support, defeats reduce it, and home ticket prices above the supporters’ budget damage support after the match. Affordable prices can help rebuild it. Results also grow or shrink the underlying fan base over time.
+
+Demand depends on fan support, fan-base size, recent form, league position, and ticket prices. Expensive tickets reduce demand sharply, so £40 is not automatically the most profitable option. Stadium expansion raises capacity without creating extra supporters. Use **Finances** to compare projected attendance and gate revenue at each price; match reports show the actual crowd and fan-support change.
+
+Existing saves receive supporter data automatically. Reloading or changing ticket prices does not directly change support; reactions happen at matches. The fan base and support persist into the next season.
+
 ## Deploy to Cloudflare Workers
 
 Connect this repository to Cloudflare Workers Builds. Leave the build command empty and use `npx wrangler deploy` as the deploy command, with the repository root as the working directory. `wrangler.jsonc` serves the game from `public/`.
@@ -22,6 +30,8 @@ For Cloudflare Pages, select no framework, leave the build command empty, and us
 
 ## Tests
 
-Requires Node.js. Run `node tests/selection.cjs` and `node tests/team-talk.cjs` from the repository root. This checks Auto-pick with exhausted players, empty-slot selection, direct replacement, injury rules, formation changes, and match progression. Team-talk tests cover diminishing gains, repeated clicks, the three-match cooldown, reload persistence, season boundaries, and existing saves.
+Requires Node.js. Run `node tests/selection.cjs` and `node tests/team-talk.cjs`, and `node tests/fans.cjs` from the repository root. This checks Auto-pick with exhausted players, empty-slot selection, direct replacement, injury rules, formation changes, and match progression. Team-talk tests cover diminishing gains, repeated clicks, the three-match cooldown, reload persistence, season boundaries, and existing saves.
 
 All players and clubs are fictional. Match outcomes are simulated locally; no AI service or API key is required.
+
+Fan tests cover price-sensitive demand, ticket revenue tradeoffs, fan reactions, stadium expansion, match accounting, reloads, and old-save migration.
