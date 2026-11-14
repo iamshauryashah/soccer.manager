@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync('public/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const source=fs.readFileSync('public/solo.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function game(saved=null){const nodes={},storage={value:saved};const ctx={Math,console,setTimeout:()=>0,clearTimeout(){},localStorage:{getItem(){return storage.value},setItem(k,v){storage.value=v}},document:{querySelector(s){return nodes[s]??={innerHTML:'',textContent:'',showModal(){},close(){}}}}};vm.createContext(ctx);vm.runInContext(source,ctx);return{run:s=>vm.runInContext(s,ctx),storage};}
 let g=game();assert.equal(g.run('paySponsor(1,0,true,6000)'),0);const start=g.run('state.cash');g.run("signSponsor('steady')");assert.equal(g.run('state.cash'),start+100000);g.run("signSponsor('results')");assert.equal(g.run('state.cash'),start+100000);assert.equal(g.run('state.sponsor.id'),'steady');assert.equal(g.run('paySponsor(0,5,false,0)'),85000);assert.equal(g.run('state.sponsor.matchesLeft'),37);
 g.run('save()');g=game(g.storage.value);assert.equal(g.run('state.sponsor.matchesLeft'),37);const savedCash=g.run('state.cash');g.run("signSponsor('crowds')");assert.equal(g.run('state.cash'),savedCash);

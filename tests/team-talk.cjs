@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const code=fs.readFileSync('public/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const code=fs.readFileSync('public/solo.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function game(saved=null){const elements={},storage={value:saved};const ctx={Math,console,setTimeout:()=>0,clearTimeout(){},localStorage:{getItem(){return storage.value},setItem(k,v){storage.value=v}},document:{querySelector(s){return elements[s]??={innerHTML:'',textContent:'',showModal(){},close(){}}}}};vm.createContext(ctx);vm.runInContext(code,ctx);return {ctx,storage,run:s=>vm.runInContext(s,ctx)};}
 let g=game();
 g.run(`state.squad.forEach((p,i)=>p.morale=[40,60,65,70,75,79,80,90,100][i%9]);`);

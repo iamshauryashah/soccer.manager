@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync('public/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const source=fs.readFileSync('public/solo.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function game(saved=null){const nodes={},storage={value:saved};const ctx={Math,console,setTimeout:()=>0,clearTimeout(){},localStorage:{getItem(){return storage.value},setItem(k,v){storage.value=v}},document:{querySelector(s){return nodes[s]??={innerHTML:'',textContent:'',showModal(){},close(){}}}}};vm.createContext(ctx);vm.runInContext(source,ctx);return{run:s=>vm.runInContext(s,ctx),storage};}
 function verifyWorld(g){assert.equal(g.run('Object.values(state.leagues).every(c=>c.length===20)'),true);assert.equal(g.run('new Set(Object.values(state.leagues).flat().map(c=>c.id)).size'),60);assert.equal(g.run('state.clubs[0].id'),0);assert.equal(g.run('state.clubs===state.leagues[state.division]'),true);}
 let g=game();verifyWorld(g);assert.equal(g.run('state.division'),3);assert.equal(g.run('state.schedule.length'),38);

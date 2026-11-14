@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const code=fs.readFileSync('public/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const code=fs.readFileSync('public/solo.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function game(saved=null){const elements={},storage={value:saved};const ctx={Math,console,setTimeout:()=>0,clearTimeout(){},localStorage:{getItem(){return storage.value},setItem(k,v){storage.value=v}},document:{querySelector(s){return elements[s]??={innerHTML:'',textContent:'',showModal(){},close(){}}}}};vm.createContext(ctx);vm.runInContext(code,ctx);return {run:s=>vm.runInContext(s,ctx),storage};}
 let g=game();assert.equal(g.run('state.fans'),65);assert.ok(g.run('attendance()<state.capacity'));
 const rows=g.run('[15,20,25,30,40].map(price=>({price,crowd:attendance(price),revenue:attendance(price)*price}))');
@@ -15,6 +15,6 @@ g.run('state.fans=60;state.ticket=40');assert.ok(g.run('updateFanSupport(1,1,tru
 g.run('state.fans=60;setTicketPrice(40);setTicketPrice(15);setTicketPrice(40)');assert.equal(g.run('state.fans'),60);g.run('setTicketPrice(999)');assert.equal(g.run('state.ticket'),40);
 // Last match crowd and money must agree with the pre-match forecast.
 g.run('state=fresh();state.ticket=40;autoPick()');const expected=g.run('attendance()'),price=g.run('state.ticket');g.run('playMatch()');assert.equal(g.run('state.lastHomeGate.crowd'),expected);assert.equal(g.run('state.lastHomeGate.revenue'),expected*price);assert.equal(g.run("state.ledger.find(l=>l.label==='Home ticket revenue').amount"),expected*price);assert.ok(g.run("document.querySelector('#modal').innerHTML.includes('Attendance')"));assert.ok(g.run("finances().includes('Compare ticket prices')"));
-const support=g.run('state.fans'),base=g.run('state.fanBase');g=game(g.storage.value);assert.equal(g.run('state.fans'),support);assert.equal(g.run('state.fanBase'),base);g.run('state.round=38;newSeason()');assert.equal(g.run('state.fans'),support);assert.equal(g.run('state.fanBase'),base);
+const support=g.run('state.fans'),base=g.run('state.fanBase');g=game(g.storage.value);assert.equal(g.run('state.fans'),support);assert.equal(g.run('state.fanBase'),base);g.run('state.clubs[0].pts=-1;state.round=38;newSeason()');assert.equal(g.run('state.fans'),support);assert.equal(g.run('state.fanBase'),base);
 const old=JSON.parse(g.storage.value);delete old.fans;delete old.fanBase;delete old.lastHomeGate;old.cash=654321;g=game(JSON.stringify(old));assert.equal(g.run('state.fans'),65);assert.equal(g.run('state.fanBase'),6500);assert.equal(g.run('state.cash'),654321);
 console.log('PASS: price-sensitive crowds, non-dominant £40 tickets, fan support, realistic expansion demand, match-only effects, forecast/accounting agreement, reloads, season continuity, old-save migration.');

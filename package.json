@@ -1,1 +1,1 @@
-{"name":"touchline-soccer-manager","version":"0.2.0","private":true,"scripts":{"test":"node tests/run.cjs"}}
+{"name":"touchline-soccer-manager","version":"0.3.0","private":true,"type":"module","scripts":{"build":"node scripts/build-engine.cjs && node scripts/build-online.cjs","test":"node scripts/build-engine.cjs && node scripts/build-online.cjs && node tests/run.cjs","dev":"node scripts/dev-server.mjs"}}

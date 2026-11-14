@@ -1,3 +1,4 @@
 node_modules/
 .wrangler/
+.local-worlds/
 .DS_Store

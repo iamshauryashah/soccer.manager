@@ -1,0 +1,23 @@
+const fs=require('node:fs');
+const html=fs.readFileSync('public/solo.html','utf8');let source=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+const start=source.indexOf('let state;try{'),end=source.indexOf('// Preserve existing players;',start);
+source=source.slice(0,start)+"let state=window.onlineSnapshot.state;"+source.slice(end);
+source=source.replace(/function save\(\)\{[^\n]*\}/,'function save(){}');
+source=source.replace('onchange="state.tactic=this.value;save();render()"','onchange="selectOnlineTactic(this.value)"');
+source=source.replace('onclick="autoPick();save();render();autoPickNotice()"','onclick="autoPick()"');
+source=source.replace('onclick="viewedDivision=${d};render()"','onclick="viewLeague(${d})"');
+for(const fn of ['overview','league']){const a=source.indexOf('function '+fn+'('),b=source.indexOf('\nfunction ',a+1);const part=source.slice(a,b).replaceAll('Northbridge FC','${state.clubs[0].name}').replace('Northbridge fixtures','${state.clubs[0].name} fixtures');source=source.slice(0,a)+part+source.slice(b);}
+source=source.replace('${c.name}</strong> ${c.id===0?', '${c.name}</strong> ${c.managed?\'<span class="tag">MANAGER</span>\':\'\'} ${c.id===0?');
+source=source.replaceAll('||a.id-b.id)', '||(a.worldId??a.id)-(b.worldId??b.id))');
+source=source.replaceAll('NORTHBRIDGE FOOTBALL CLUB / 1894','${state.clubs[0].name.toUpperCase()} / 1894');
+source=source.replace('<div class="mini-crest">N</div>','<div class="mini-crest">${state.clubs[0].name[0].toUpperCase()}</div>');
+source=source.replace('If your balance drops below −£500k, the club enters administration and your career ends.','Below −£500k, board confidence falls. Your shared club keeps playing and must recover financially.');
+source=source.replace('Start season ${state.season+1} ↗',"${window.onlineSnapshot.world.ready?'Unready':'Ready for next season'} ↗");
+source=source.replace('function render(){cleanLineup();','function render(){cleanLineup();');
+source=source.replace('}render();save();',';renderOnlineControls();}render();save();');
+source=source.replace('}render();save();','}');
+source+='\n'+fs.readFileSync('scripts/online-actions.js','utf8');
+fs.writeFileSync('public/online-game.js',source);
+let page=html.replace(/<script>[\s\S]*?<\/script>/,'<script src="/online-boot.js" defer></script>').replace('<strong>Northbridge FC</strong>','<strong id="online-club-name">Your football club</strong>').replace('Career autosaved locally','Shared world · server saved').replace('onclick="resetCareer()">Start a new career ↗','onclick="onlineAccount()">Manager key & club name ↗').replace('<header>','<section id="online-world" class="notice">Connecting to your shared league…</section><header>').replace('<h1 id="page-title">Club overview</h1>','<h1 id="page-title">Shared soccer leagues</h1>').replace('<button class="primary" id="advance"','<button class="primary" disabled id="advance"').replace('Fictional clubs & players · Your career stays in this browser','Shared world · Same fixtures, same results');
+page=page.replace('</style>', '.online-input{width:100%;padding:12px;border:1px solid #d6dfcd;border-radius:6px;font:inherit;margin:7px 0 15px}.online-error{color:#a84434;font-size:12px;min-height:20px}.world-clubs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.world-clubs span{background:white;padding:4px 9px;border-radius:4px;font-size:11px}.online-key{font-size:11px;letter-spacing:.3px}#online-world{display:block}#online-world .world-top{display:flex;flex-wrap:wrap;align-items:center;gap:12px}#online-world .world-top strong{margin-right:auto}.online-mode{display:flex;gap:12px;margin-bottom:16px}.online-mode button{flex:1}dialog label{display:block;font-size:12px;font-weight:600}#content .panel-head{gap:12px}.notice button{margin-left:0}</style>');
+fs.writeFileSync('public/index.html',page);
