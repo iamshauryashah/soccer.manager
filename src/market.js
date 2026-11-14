@@ -12,6 +12,18 @@ export class TransferMarket{
  release(bid){if(bid)this.data.outbox.push({...bid,id:'release:'+bid.bidId,type:'release'});}
  view(division,world,manager){return Object.values(this.data.listings).filter(p=>p.division===division&&['available','open'].includes(p.status)).map(p=>({...p.player,auction:{resale:!!p.resale,sourceClub:p.sourceClub||null,status:p.status,highBid:p.high?.amount||0,nextBid:p.high?p.high.amount+increment(p.high.amount):p.player.value,endsAt:p.endsAt,leadingClub:p.high?.club||null,leadingWorld:p.high?.world||null,leadingManager:p.high?.manager||null,isLeading:!!p.high&&p.high.world===world&&p.high.manager===manager}}));}
  async fetch(request){try{const result=await this.enqueue(async()=>{let body;try{body=await request.json();}catch{throw error(400,'Invalid market request.');}if(!body||typeof body!=='object')throw error(400,'Invalid market request.');if(this.closeDue())await this.persist();const route=new URL(request.url).pathname;
+ if(route==='/close-manager'){
+  if(typeof body.world!=='string'||typeof body.manager!=='string'||!body.world||!body.manager)throw error(400,'Invalid club closure.');
+  this.data.closedManagers??={};const id=JSON.stringify([body.world,body.manager]);
+  if(this.data.closedManagers[id])return{closed:true};this.data.closedManagers[id]=true;
+  for(const listing of Object.values(this.data.listings)){
+   if(listing.high?.world===body.world&&listing.high?.manager===body.manager&&['open','settling'].includes(listing.status)){listing.status='available';listing.high=null;listing.endsAt=null;}
+   if(listing.status==='sold'&&listing.owner?.world===body.world&&listing.owner?.manager===body.manager){listing.status='retired';delete listing.owner;listing.high=null;listing.endsAt=null;}
+  }
+  this.data.outbox=this.data.outbox.filter(e=>e.world!==body.world||e.manager!==body.manager);this.refill();await this.persist();return{closed:true};
+ }
+ const closed=manager=>this.data.closedManagers?.[JSON.stringify([body.world,manager])];
+ if((['/bid','/resell'].includes(route)&&closed(body.manager))||(route==='/reassign'&&(closed(body.from)||closed(body.to))))throw error(410,'This club has been deleted.');
  if(route==='/catalog'){if(![1,2,3].includes(body.division))throw error(400,'Unknown division.');return{players:this.view(body.division,body.world,body.manager)};}
  if(route==='/reassign'){
   this.data.directReceipts??={};const saved=this.data.directReceipts[body.dealId];
