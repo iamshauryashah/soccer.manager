@@ -2,6 +2,6 @@
  "name":"soccer-manager","main":"src/worker.js","compatibility_date":"2026-11-14",
  "build":{"command":"node scripts/build-engine.cjs && node scripts/build-online.cjs"},
  "assets":{"directory":"./public","binding":"ASSETS","run_worker_first":["/api/*"]},
- "durable_objects":{"bindings":[{"name":"LEAGUE_WORLDS","class_name":"LeagueWorld"}]},
- "migrations":[{"tag":"shared-leagues-v1","new_sqlite_classes":["LeagueWorld"]}]
+ "durable_objects":{"bindings":[{"name":"LEAGUE_WORLDS","class_name":"LeagueWorld"},{"name":"TRANSFER_MARKET","class_name":"TransferMarket"}]},
+ "migrations":[{"tag":"shared-leagues-v1","new_sqlite_classes":["LeagueWorld"]},{"tag":"global-transfers-v2","new_sqlite_classes":["TransferMarket"]}]
 }

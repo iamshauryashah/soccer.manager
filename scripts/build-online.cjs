@@ -8,6 +8,15 @@ source=source.replace('onclick="autoPick();save();render();autoPickNotice()"','o
 source=source.replace('onclick="viewedDivision=${d};render()"','onclick="viewLeague(${d})"');
 for(const fn of ['overview','league']){const a=source.indexOf('function '+fn+'('),b=source.indexOf('\nfunction ',a+1);const part=source.slice(a,b).replaceAll('Northbridge FC','${state.clubs[0].name}').replace('Northbridge fixtures','${state.clubs[0].name} fixtures');source=source.slice(0,a)+part+source.slice(b);}
 source=source.replace('${c.name}</strong> ${c.id===0?', '${c.name}</strong> ${c.managed?\'<span class="tag">MANAGER</span>\':\'\'} ${c.id===0?');
+let marketStart=source.indexOf('function market()'),marketEnd=source.indexOf('\nfunction buy(',marketStart),marketUI=source.slice(marketStart,marketEnd);
+marketUI=marketUI.replace('let list=transferPlayers();return `','let list=transferPlayers(),holds=Object.values(state.auctionHolds||{});return `<div class="notice"><strong>Global transfer auctions</strong><span>Every world bids on these players. The highest offer wins after two minutes. Late bids leave at least 30 seconds to respond.</span></div>${holds.length?`<div class="panel" style="margin-bottom:20px"><h2>Your held bids</h2>${holds.map(h=>`<div class="row"><span>${h.playerName}<br><small>${h.status===\'pending\'?\'Confirming offer\':\'Funds held while your offer leads\'}</small></span><strong>${money(h.amount)}</strong></div>`).join(\'\')}</div>`:\'\'}');
+marketUI=marketUI.replace('Higher leagues attract stronger players. Fees are paid immediately; wages are paid weekly.','Higher leagues attract stronger players. Bids reserve available cash; outbid offers are refunded. Only the winning club signs the player.');
+marketUI=marketUI.replace('<th>Transfer fee</th>','<th>Current bid / guide fee</th>');
+marketUI=marketUI.replace('<td><strong>${money(p.value)}</strong></td>','<td><strong>${money(p.auction?.highBid||p.value)}</strong><small style="display:block;margin-top:5px">${p.auction?.endsAt?\'Ends \'+new Date(p.auction.endsAt).toLocaleTimeString():\'No offers yet\'}</small>${p.auction?.isLeading?\'<span class="tag">YOU LEAD</span>\':\'\'}</td>');
+marketUI=marketUI.replace('state.cash<p.value||','').replace('>Sign +</button>','>Bid +</button>');
+source=source.slice(0,marketStart)+marketUI+source.slice(marketEnd);
+source=source.replace('Club balance <span>','Available cash <span>');
+source=source.replace('<div class="row"><span>Weekly wages</span>','<div class="row"><span>Cash held in transfer bids</span><strong>${money(Object.values(state.auctionHolds||{}).reduce((n,h)=>n+h.amount,0))}</strong></div><div class="row"><span>Weekly wages</span>');
 source=source.replaceAll('||a.id-b.id)', '||(a.worldId??a.id)-(b.worldId??b.id))');
 source=source.replaceAll('NORTHBRIDGE FOOTBALL CLUB / 1894','${state.clubs[0].name.toUpperCase()} / 1894');
 source=source.replace('<div class="mini-crest">N</div>','<div class="mini-crest">${state.clubs[0].name[0].toUpperCase()}</div>');

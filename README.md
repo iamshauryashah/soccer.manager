@@ -18,8 +18,8 @@ Ready managers can **Unready** to make changes before the round advances. At sea
 
 - All 60 clubs’ standings and the 38-round calendar.
 - One authoritative result per fixture, mirrored for both human managers.
-- Transfer listings per division. If two managers try to sign one player, the first completed purchase wins; a player cannot join two squads.
-- Player-name history across the world, including sold players and expired listings.
+- One global transfer market across **all worlds**, with stronger-player pools for the higher leagues. Every listing represents one player: only one club anywhere can win and sign that player. Matchdays and seasons do not split the transfer pool.
+- Player-name history across the world, including sold players and expired listings. Catalog players use unique dotted middle initials and stable IDs to avoid collisions with generated club recruits.
 
 Each manager controls only their own squad, tactics, budget, sponsors and tickets. The browser sends individual actions; it cannot upload money, ratings, or match results. Private manager keys are not included in standings or other managers’ snapshots. The server stores hashes of the keys.
 
@@ -43,7 +43,7 @@ The deploy command remains **`npx wrangler deploy`** from the repository root. `
 
 This version requires **Workers**, not a static Pages-only deployment. Use the existing Worker’s GitHub build integration. Wrangler runs the source-generation commands before bundling. Cloudflare runtime/account limits still apply.
 
-Worlds persist in a SQLite-backed Durable Object per world code. State is stored atomically in bounded chunks; concurrent actions are serialized, and deadlines use Durable Object alarms. Existing world data must be preserved when changing future migration tags.
+Worlds persist in a SQLite-backed Durable Object per world code. A separate `TRANSFER_MARKET` Durable Object owns the global auctions, winning-club records, and delivery outbox. State is stored atomically in bounded chunks; concurrent actions are serialized, and deadlines use Durable Object alarms. Existing world data must be preserved when changing future migration tags.
 
 ## Development and tests
 
@@ -55,3 +55,19 @@ Worlds persist in a SQLite-backed Durable Object per world code. State is stored
 `public/solo.html` contains the base game rules. `scripts/build-engine.cjs` generates `src/engine.js`; `scripts/build-online.cjs` combines the UI with `scripts/online-actions.js` to generate `public/online-game.js` and `public/index.html`. Keep these generated files current through the build command.
 
 Tests cover all prior gameplay plus independent manager keys, club naming, concurrent purchases, action ownership, mirrored head-to-head scores, stale/repeated ready requests, durable reload, deadline recovery, a full shared season, synchronized promotion, and named-club UI initialization.
+
+Existing online worlds connect to the global market on their next load without changing owned players, money, standings, or readiness. Catalog player IDs occupy a separate namespace from existing recruits. Global sold-player records prevent purchased players from reappearing, including after a restart.
+
+## Global bidding
+
+Click **Bid +** in Transfers. The first offer must meet the guide fee and opens a two-minute auction. Other managers, including managers in different worlds, can outbid it. Each new offer must increase the current bid by at least 5% or £10k, whichever is larger. Late offers leave at least 30 seconds for a response.
+
+The club’s available cash is reduced while its offer leads. A higher self-offer holds only the extra amount. Outbid offers are refunded automatically. At closing time, the player is delivered to the single winning club; held funds cover the transfer fee. Other worlds cannot sign the same player. Auction deadlines use real time and do not depend on when a world advances its league season.
+
+Available squad slots are reserved with active bids. Auction deliveries use a persisted outbox and per-event receipts; retries cannot duplicate players or refunds. Uncertain bid responses keep their escrow reserved and retry the same bid identity. If an award cannot be delivered, its funds are released and the player returns to bidding. New listings refill the market as completed transfers leave it. Released/sold club players are not automatically relisted globally.
+
+Deploying this version will require the additional `global-transfers-v2` migration in `wrangler.jsonc`, which creates the `TransferMarket` Durable Object namespace. The existing league-world migration is retained unchanged.
+
+## Visible team rating
+
+The page header shows **TEAM OVR** throughout the game, including the dashboard and Squad screen. It is the average base overall of the 11 selected starters, shown to one decimal place, and updates when the lineup changes. The Squad screen repeats it beside the starting XI. Benched players do not affect it; fitness, morale, and tactics still affect match performance separately. An incomplete, injured, or positionally invalid lineup shows a selection prompt instead of a misleading rating.
