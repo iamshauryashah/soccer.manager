@@ -37,7 +37,7 @@ const {harness}=require('./helpers/online-harness.cjs');
  const {default:worker}=await import('../src/worker.js');const fullNodes={},urls=[];let loaded;
  const ready=new Promise(resolve=>loaded=resolve),boot={Math,Date,console,setTimeout:()=>0,clearTimeout(){},setInterval(){},localStorage:{getItem(){return JSON.stringify({code:'DEALS',key:a})},setItem(){},removeItem(){}},document:{querySelector(s){return fullNodes[s]??={innerHTML:'',textContent:'',value:'',className:'',open:false,showModal(){this.open=true},close(){this.open=false}};},createElement(){return {};},body:{appendChild(script){loaded(script);}}}};
  boot.window=boot;boot.fetch=async(url,options)=>{urls.push(url);return worker.fetch(new Request('https://game.test'+url,options),h.env);};vm.createContext(boot);
- vm.runInContext(fs.readFileSync('public/online-boot.js','utf8'),boot);const script=await ready;assert.match(script.src,/squad-state-route-8/);vm.runInContext(fs.readFileSync('public/online-game.js','utf8'),boot);
+ vm.runInContext(fs.readFileSync('public/online-boot.js','utf8'),boot);const script=await ready;assert.match(script.src,/market-coverage-11/);vm.runInContext(fs.readFileSync('public/online-game.js','utf8'),boot);
  await boot.viewClubSquad(mc.clubId);assert.ok(urls.includes('/api/worlds/DEALS/state?clubId='+mc.clubId));assert.equal(fullNodes['#modal'].open,true);assert.match(fullNodes['#modal'].innerHTML,/Other Town/);assert.ok(!urls.some(u=>u.includes('/club?')));
  console.log('PASS: squad browsing/privacy, priced offers, reject/withdraw/accept permissions, exact payment and one owner, competing offers, ready/cash/roster guards, expiration, durable global ownership sync/resale and UI submission.');
 })().catch(e=>{console.error(e);process.exit(1)});

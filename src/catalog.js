@@ -17,7 +17,7 @@ function randomFor(seed){let x=2166136261;for(const ch of seed){x^=ch.charCodeAt
 // Negative IDs and dotted middle initials separate catalog players from club recruits.
 export function transferCatalog(season,round,division){
  if(!Number.isSafeInteger(season)||season<1||!Number.isInteger(round)||round<0||round>38||![1,2,3].includes(division))throw Error('Invalid transfer catalog calendar.');
- const config=DIVISIONS[division],random=randomFor('touchline-catalog-v1:'+season+':'+round+':'+division),rand=(lo,hi)=>lo+Math.floor(random()*(hi-lo+1));
- return Array.from({length:12},(_,slot)=>{const ordinal=((season-1)*39+round)*36+(division-1)*12+slot;if(!Number.isSafeInteger(ordinal)||ordinal>=1e12)throw Error('Transfer catalog limit reached.');const ovr=rand(...config.market),baseValue=Math.round((ovr-42)**2*800/10000)*10000,baseWage=Math.round((ovr-35)*75/100)*100;
+ const config=DIVISIONS[division],random=randomFor('touchline-catalog-v1:'+season+':'+round+':'+division),rand=(lo,hi)=>lo+Math.floor(random()*(hi-lo+1)),offset=rand(0,11);
+ return Array.from({length:12},(_,slot)=>{const ordinal=((season-1)*39+round)*36+(division-1)*12+slot;if(!Number.isSafeInteger(ordinal)||ordinal>=1e12)throw Error('Transfer catalog limit reached.');const band=(slot*5+offset)%12,ovr=config.market[0]+Math.floor((band+random())*(config.market[1]-config.market[0]+1)/12),baseValue=Math.round((ovr-42)**2*800/10000)*10000,baseWage=Math.round((ovr-35)*75/100)*100;
  return{id:-(ordinal+1),name:catalogName(ordinal),pos:['GK','DEF','MID','FWD'][slot%4],age:rand(18,32),ovr,potential:Math.min(94,ovr+rand(3,14)),morale:rand(65,87),fitness:rand(88,100),injury:0,wage:Math.round(baseWage*Math.sqrt(config.transferScale)/100)*100,value:Math.round(baseValue*config.transferScale/10000)*10000,xp:0,catalogVersion:CATALOG_VERSION};});
 }

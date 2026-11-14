@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 (async()=>{
- const h=await require('./helpers/online-harness.cjs').harness(),code='BID-BUTTON',key=await h.join(code,'Button United'),snapshot=await h.state(code,key),nodes={},calls=[];
+ const h=await require('./helpers/online-harness.cjs').harness(),code='BID-BUTTON',key=await h.join(code,'Button United'),observer=await h.join('BID-WATCH','Observer FC'),snapshot=await h.state(code,key),nodes={},calls=[];
  const ctx={Math,Date,console,setTimeout:()=>0,clearTimeout(){},setInterval(){},localStorage:{setItem(){},removeItem(){}},onlineSnapshot:snapshot,onlineProfile:{code,key},document:{querySelector(s){return nodes[s]??={innerHTML:'',textContent:'',value:'',className:'',open:false,showModal(){this.open=true},close(){this.open=false}};}}};ctx.window=ctx;
  ctx.onlineRequest=async(endpoint,body)=>{calls.push(endpoint);const r=await h.api(code,endpoint,key,body);if(r.status>=400)throw Error(r.data.error);return r.data;};
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('public/online-game.js','utf8'),ctx);

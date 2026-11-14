@@ -28,7 +28,7 @@ const {harness}=require('./helpers/online-harness.cjs');
  sa=await h.state('SELLERS',a);const world=h.world('SELLERS'),career=world.world.careers[world.world.managers[0].id];career.squad=career.squad.slice(0,14);await world.persist();const protectedCash=career.cash;
  r=await h.action('SELLERS',a,'sell',{id:career.squad[0].id});assert.equal(r.status,400);assert.equal((await h.state('SELLERS',a)).state.cash,protectedCash);
  // A lost publish response survives restart and retries without a duplicate listing/payment.
- const lost=await harness(),key=await lost.join('RETRY','Retry FC'),start=await lost.state('RETRY',key),p=start.state.squad.find(p=>p.pos==='GK'),get=lost.env.TRANSFER_MARKET.get;
+ const lost=await harness(),key=await lost.join('RETRY','Retry FC'),observer=await lost.join('RETRY-WATCH','Observer FC'),start=await lost.state('RETRY',key),p=start.state.squad.find(p=>p.pos==='GK'),get=lost.env.TRANSFER_MARKET.get;
  let drop=true;lost.env.TRANSFER_MARKET.get=()=>({async fetch(req){const response=await get().fetch(req);if(drop&&new URL(req.url).pathname==='/resell'){drop=false;throw Error('Response lost');}return response;}});
  r=await lost.action('RETRY',key,'sell',{id:p.id});assert.equal(r.status,200);assert.equal(r.data.world.pendingSales,1);assert.ok(lost.storage('RETRY').alarm);
  lost.env.TRANSFER_MARKET.get=get;await lost.restartWorld('RETRY');await lost.world('RETRY').alarm();
