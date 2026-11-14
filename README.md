@@ -71,3 +71,5 @@ Deploying this version will require the additional `global-transfers-v2` migrati
 ## Visible team rating
 
 The page header shows **TEAM OVR** throughout the game, including the dashboard and Squad screen. It is the average base overall of the 11 selected starters, shown to one decimal place, and updates when the lineup changes. The Squad screen repeats it beside the starting XI. Benched players do not affect it; fitness, morale, and tactics still affect match performance separately. An incomplete, injured, or positionally invalid lineup shows a selection prompt instead of a misleading rating.
+
+Sold players re-enter the global transfer market for the selling club’s current league. The selling club receives its normal 80% sale value immediately, and the player leaves the squad and lineup. Other managers can bid using the standard two-minute auction. The market owns the listing and retains later auction proceeds. Player attributes are preserved; original club recruits receive a global market ID, while previously purchased players retain theirs. Unconfirmed listings are saved and retried automatically without a second payment or duplicate listing.
