@@ -1,0 +1,1 @@
+{"name":"touchline-soccer-manager","version":"0.2.0","private":true,"scripts":{"test":"node tests/run.cjs"}}

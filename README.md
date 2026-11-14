@@ -1,45 +1,49 @@
 # Touchline — Soccer Manager
 
-A browser soccer management game. Buy and sell players, choose your starting XI, train your squad, manage morale and finances, expand the stadium, and play through league seasons.
+Build Northbridge FC from League 3 to the top flight. Manage players, tactics, training, fan support, ticket prices, finances, and sponsorship contracts across a three-league pyramid.
 
-## Play locally
+## Play
 
-Open `public/index.html` in your browser. No build or installation is needed. Career progress autosaves in browser local storage. Saves belong to that browser and site address; opening the deployed site will start a separate career from a downloaded file.
+Open `public/index.html` in a browser. Everything runs locally; no build or API key is required. Progress autosaves in that browser at that address.
 
-## Choose players
+## The league pyramid
 
-Open **Squad**, then click a position on the pitch to select or replace its player. You can also use the squad checkboxes. **Auto-pick XI** chooses the strongest available players for your formation. Tired players can play with reduced performance; injured players cannot play. Any missing positions are explained after Auto-pick.
+New careers begin in League 3. Each of the three leagues has 20 clubs, playing 38 matches home and away. All 60 clubs play each matchday, and you can view every table on the League screen.
 
-## Team talks
+At season end, the top three in Leagues 2 and 3 are promoted. The bottom three in Leagues 1 and 2 are relegated. There is no promotion above League 1 or relegation below League 3. Clubs move when you start the next season. Rankings use points, goal difference, goals scored, and club ID as the final tie-breaker.
 
-Team talks give up to +4 morale to each player, with smaller gains as confidence rises. A talk cannot raise morale above 80. Play three matches between talks; reloading and changing seasons preserve the cooldown. The Training screen shows when the next talk is available. Existing careers are upgraded automatically.
+| League | Prize range | Fan-demand multiplier | Transfer rating range |
+| --- | --- | --- | --- |
+| League 3 | £250k–£2m | ×1.0 | 55–74 OVR |
+| League 2 | £1m–£7m | ×1.5 | 66–84 OVR |
+| League 1 | £3m–£25m | ×2.4 | 78–93 OVR |
 
-## Supporters and ticket prices
+Prizes descend with finishing position and are paid once in the league you completed. Promotion adds up to 10 fan-support points and increases the fan base by 20%; relegation reduces support by up to 10 and the fan base by 15%. Existing attendance, affordability, and stadium-capacity rules still apply. Transfer fees and wages also rise for stronger-league recruits.
 
-Fan support is rated from 0 to 100 and affects attendance. Wins lift support, defeats reduce it, and home ticket prices above the supporters’ budget damage support after the match. Affordable prices can help rebuild it. Results also grow or shrink the underlying fan base over time.
+## Transfer sorting
 
-Demand depends on fan support, fan-base size, recent form, league position, and ticket prices. Expensive tickets reduce demand sharply, so £40 is not automatically the most profitable option. Stadium expansion raises capacity without creating extra supporters. Use **Finances** to compare projected attendance and gate revenue at each price; match reports show the actual crowd and fan-support change.
+On the Transfers screen, click **Overall: high to low** to show the highest-rated players first. Sorting also applies to position filters and new listings, and the preference is saved with your career.
 
-Existing saves receive supporter data automatically. Reloading or changing ticket prices does not directly change support; reactions happen at matches. The fan base and support persist into the next season.
+## Sponsorship management
 
-## Unique player names
+Use **Sponsors** to choose a contract for the remainder of the season:
 
-Players are named from thousands of combinations across 14 regional name pools. Names are reserved for the entire career, including sold players and expired transfer listings, so refreshes and reloads do not reuse them. Very long careers can generate additional names with middle names when the base pool is exhausted.
+- **Riverside Mutual:** reliable guaranteed income.
+- **Stride Sports:** lower guaranteed income plus win bonuses.
+- **Townline Travel:** income plus a home bonus for at least 75% occupancy.
 
-Existing saves automatically rename duplicate entries, preserving the first squad player with each name and keeping every player’s ID, rating, wages, and other attributes. An explicit new career starts a new name registry.
+Signing fees arrive once. Weekly and conditional bonuses are paid after matches and appear in cash flow and match reports. Contracts cannot be repeatedly switched for signing fees; they expire at season end. Signing late prorates the upfront fee. League 2 offers scale by ×2.4 and League 1 by ×6 relative to League 3. No sponsor means no sponsorship income.
 
-## Deploy to Cloudflare Workers
+## Existing careers
 
-Connect this repository to Cloudflare Workers Builds. Leave the build command empty and use `npx wrangler deploy` as the deploy command, with the repository root as the working directory. `wrangler.jsonc` serves the game from `public/`.
-
-For Cloudflare Pages, select no framework, leave the build command empty, and use `public` as the output directory.
+The old eight-team campaign is archived and a new League 3 campaign begins. Squad, player IDs and attributes, money, stadium, fan support, fan base, name history, and team-talk cooldown are preserved. Current league tables and fixture schedules restart together so no club receives an unfair points advantage. A message in the club journal explains the upgrade. The migration runs only once.
 
 ## Tests
 
-Requires Node.js. Run `node tests/selection.cjs`, `node tests/team-talk.cjs`, `node tests/fans.cjs`, and `node tests/names.cjs` from the repository root. This checks Auto-pick with exhausted players, empty-slot selection, direct replacement, injury rules, formation changes, and match progression. Team-talk tests cover diminishing gains, repeated clicks, the three-match cooldown, reload persistence, season boundaries, and existing saves.
+Run `npm test` or `node tests/run.cjs`. No package installation is needed.
 
-All players and clubs are fictional. Match outcomes are simulated locally; no AI service or API key is required.
+Tests cover full 38-match seasons, all promotion/relegation boundaries, 60 unique clubs, prize accounting, sponsor fees and conditional payouts, save migration, transfers, fans, team talks, squad selection, and player-name uniqueness.
 
-Fan tests cover price-sensitive demand, ticket revenue tradeoffs, fan reactions, stadium expansion, match accounting, reloads, and old-save migration.
+## Cloudflare configuration
 
-Name tests generate thousands of players and check uniqueness, pool exhaustion, reloads, retired names, old-save repairs, season refreshes, and explicit career resets.
+`wrangler.jsonc` serves `public/`. The eventual Workers deploy command is `npx wrangler deploy`, with no build step. For Pages, use no framework, no build command, and `public` as the output directory. 

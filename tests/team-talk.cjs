@@ -18,7 +18,7 @@ g.run('state.squad.forEach(p=>p.morale=50)');assert.equal(g.run('teamTalkStatus(
 // Do not waste a talk on a confident squad, or lower high morale to the cap.
 g.run('state=fresh();autoPick();state.squad.forEach(p=>p.morale=95)');assert.equal(g.run('teamTalkStatus().available'),false);g.run("boost('talk')");assert.equal(g.run('avg("morale")'),95);assert.equal(g.run('state.lastTeamTalkMatch'),null);
 // A late-season talk remains on cooldown into the following season.
-g.run("state=fresh();state.round=13;state.squad.forEach(p=>{p.morale=40;p.injury=0;p.fitness=100});autoPick();boost('talk');playMatch();");assert.equal(g.run('teamTalkStatus().available'),false);g.run('newSeason()');assert.equal(g.run('teamTalkStatus().remaining'),2);
+g.run("state=fresh();state.round=37;state.squad.forEach(p=>{p.morale=40;p.injury=0;p.fitness=100});autoPick();boost('talk');playMatch();");assert.equal(g.run('teamTalkStatus().available'),false);g.run('newSeason()');assert.equal(g.run('teamTalkStatus().remaining'),2);
 // Existing careers retain their squad and migrate an already-used weekly talk.
 const old=JSON.parse(g.storage.value);delete old.lastTeamTalkMatch;old.talked=true;old.season=3;old.round=5;old.cash=123456;g=game(JSON.stringify(old));assert.equal(g.run('state.cash'),123456);assert.equal(g.run('teamTalkStatus().remaining'),3);
 old.talked=false;g=game(JSON.stringify(old));assert.equal(g.run('teamTalkStatus().remaining'),0);
