@@ -65,7 +65,7 @@ export class LeagueWorld{
  if(expireOffers(world,this.now())){world.revision++;await this.persist();}
  if(endpoint==='club'&&request.method==='GET')return reply(squadView(world,Number(url.searchParams.get('clubId'))));
  for(const id of Object.keys(world.careers[manager.id].auctionHolds||{}))await this.submitPending(manager,id,true);await refreshMarkets(world,this.env);
- if(endpoint==='state'&&request.method==='GET')return reply(snapshot(world,manager));if(!['action','bid','auto-ready','offer'].includes(endpoint)||request.method!=='POST')throw fail(405,'Method not allowed.');const body=await readBody(request);if(endpoint==='bid')body.action='bid';if(endpoint==='auto-ready')body.action='autoReady';if(body.season!==world.season||body.round!==world.round)throw fail(409,'The matchday has advanced. Refresh and try again.');const args=body.args||{};
+ if(endpoint==='state'&&request.method==='GET'){const result=snapshot(world,manager);if(url.searchParams.has('clubId'))result.clubSquad=squadView(world,Number(url.searchParams.get('clubId')));return reply(result);}if(!['action','bid','auto-ready','offer'].includes(endpoint)||request.method!=='POST')throw fail(405,'Method not allowed.');const body=await readBody(request);if(endpoint==='bid')body.action='bid';if(endpoint==='auto-ready')body.action='autoReady';if(body.season!==world.season||body.round!==world.round)throw fail(409,'The matchday has advanced. Refresh and try again.');const args=body.args||{};
  const directActions=['offerPlayer','acceptOffer','rejectOffer','cancelOffer'];
  if(endpoint==='offer'&&!directActions.includes(body.action))throw fail(400,'Unknown transfer offer action.');
  if(directActions.includes(body.action)){
