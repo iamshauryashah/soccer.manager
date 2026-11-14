@@ -19,6 +19,7 @@ export class LeagueWorld{
  }
  async sellPlayer(manager,args){
   const world=this.world,game=createGame({initialState:project(world,manager)}),player=structuredClone(game.state.squad.find(p=>p.id===args.id));
+  if(player)player.value=game.currentPlayerValue(player);
   actions.sell(game,args);game.save();storeCareer(world,manager,game);
   const division=memberDivision(world,manager.clubId),club=world.leagues[division].find(c=>c.id===manager.clubId).name;
   world.pendingSales??=[];world.pendingSales.push({saleId:crypto.randomUUID(),world:world.code,manager:manager.id,division,club,player});world.revision++;await this.persist();
