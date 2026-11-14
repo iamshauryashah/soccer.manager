@@ -26,7 +26,7 @@ const {harness}=require('./helpers/online-harness.cjs');
  // A long outage advances at most one match; it never fast-forwards missed intervals.
  const solo=await harness(),key=await solo.join('SINGLE','Only FC'),actor=solo.world('SINGLE');actor.now=()=>solo.clock.now;await solo.action('SINGLE',key,'autoReady',{enabled:true,minutes:5});solo.clock.now+=86400000*3;await actor.alarm();assert.equal(actor.world.round,1);assert.equal((await solo.state('SINGLE',key)).world.autoReady.nextAt,solo.clock.now+300000);
  // At the end of a season the timer pauses; manual season readiness resumes it.
- for(let i=1;i<38;i++){solo.clock.now+=300000;await actor.alarm();}
+ for(let i=1;i<38;i++){Object.values(actor.world.careers).forEach(c=>c.squad.forEach(p=>p.injury=0));await actor.persist();solo.clock.now+=300000;await actor.alarm();}
  let end=await solo.state('SINGLE',key);assert.equal(end.state.round,38);assert.equal(end.world.autoReady.nextAt,null);assert.match(end.world.autoReady.message,/season end/);
  solo.clock.now+=3600000;await actor.alarm();assert.equal(actor.world.round,38);
  r=await solo.action('SINGLE',key,'ready',{ready:true});assert.equal(r.data.state.season,2);assert.equal(r.data.state.round,0);assert.equal(r.data.world.autoReady.nextAt,solo.clock.now+300000);

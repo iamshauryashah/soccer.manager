@@ -1,6 +1,8 @@
 import {createGame} from './engine.js';
 export {TransferMarket} from './market.js';
-import {fail,cleanClubName,nameKey,newWorld,memberDivision,project,storeCareer,newIds,refreshMarkets,snapshot,advanceRound,actions,marketCall} from './world.js';
+import {fail,cleanClubName,nameKey,newWorld,memberDivision,project,storeCareer,newIds,refreshMarkets,snapshot as baseSnapshot,advanceRound,actions,marketCall} from './world.js';
+import {expireOffers,offersFor,squadView,directOfferAction} from './direct-offers.js';
+function snapshot(world,manager){const result=baseSnapshot(world,manager);result.world.directOffers=offersFor(world,manager);return result;}
 const DAY=86400000;
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const token=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -8,10 +10,10 @@ async function readBody(request){const reader=request.body?.getReader();if(!read
 async function digest(value){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(n=>n.toString(16).padStart(2,'0')).join('');}
 export class LeagueWorld{
  constructor(ctx,env){this.ctx=ctx;this.env=env;this.world=null;this.parts=0;this.queue=Promise.resolve();this.now=()=>Date.now();this.loaded=ctx.blockConcurrencyWhile(async()=>{this.parts=await ctx.storage.get('parts')||0;if(this.parts){let text='';for(let i=0;i<this.parts;i++)text+=await ctx.storage.get('part:'+i);this.world=JSON.parse(text);if(this.world.catalogVersion!==2){await refreshMarkets(this.world,this.env);this.world.revision++;await this.persist();}}this.committed=structuredClone(this.world);});}
- async persist(){const text=JSON.stringify(this.world),parts=Math.ceil(text.length/24000),old=this.parts;await this.ctx.storage.transaction(async tx=>{for(let i=0;i<parts;i++)await tx.put('part:'+i,text.slice(i*24000,(i+1)*24000));await tx.put('parts',parts);for(let i=parts;i<old;i++)await tx.delete('part:'+i);});this.parts=parts;this.committed=structuredClone(this.world);const alarms=[];if(this.world.deadline)alarms.push(this.world.deadline);if(this.world.pendingSales?.length)alarms.push(this.now()+5000);for(const manager of this.world.managers){const a=manager.autoReady;if(a?.enabled&&!manager.ready&&a.nextAt)alarms.push(a.nextAt);}if(alarms.length)await this.ctx.storage.setAlarm(Math.min(...alarms));else await this.ctx.storage.deleteAlarm();}
- async fetch(request){const task=this.queue.then(async()=>{await this.loaded;try{await this.flushSales();await this.advanceIfExpired();await this.processAutoReady();return await this.handle(request);}catch(e){this.world=structuredClone(this.committed);return reply({error:e.status?e.message:'The league could not save that action. Try again.'},e.status||503);}});this.queue=task.then(()=>{},()=>{});return task;}
+ async persist(){const text=JSON.stringify(this.world),parts=Math.ceil(text.length/24000),old=this.parts;await this.ctx.storage.transaction(async tx=>{for(let i=0;i<parts;i++)await tx.put('part:'+i,text.slice(i*24000,(i+1)*24000));await tx.put('parts',parts);for(let i=parts;i<old;i++)await tx.delete('part:'+i);});this.parts=parts;this.committed=structuredClone(this.world);const alarms=[];if(this.world.deadline)alarms.push(this.world.deadline);if(this.world.pendingSales?.length||this.world.pendingOwnership?.length)alarms.push(this.now()+5000);for(const manager of this.world.managers){const a=manager.autoReady;if(a?.enabled&&!manager.ready&&a.nextAt)alarms.push(a.nextAt);}if(alarms.length)await this.ctx.storage.setAlarm(Math.min(...alarms));else await this.ctx.storage.deleteAlarm();}
+ async fetch(request){const task=this.queue.then(async()=>{await this.loaded;try{await this.flushOwnership();await this.flushSales();await this.advanceIfExpired();await this.processAutoReady();return await this.handle(request);}catch(e){this.world=structuredClone(this.committed);return reply({error:e.status?e.message:'The league could not save that action. Try again.'},e.status||503);}});this.queue=task.then(()=>{},()=>{});return task;}
  async advanceIfExpired(){if(this.world?.deadline&&this.now()>=this.world.deadline){try{await this.advanceWorld();this.world.revision++;await this.persist();}catch(e){this.world=structuredClone(this.committed);throw e;}}}
- async alarm(){const task=this.queue.then(async()=>{await this.loaded;try{await this.flushSales();await this.advanceIfExpired();await this.processAutoReady();}catch(e){this.world=structuredClone(this.committed);throw e;}});this.queue=task.then(()=>{},()=>{});return task;}
+ async alarm(){const task=this.queue.then(async()=>{await this.loaded;try{await this.flushOwnership();await this.flushSales();await this.advanceIfExpired();await this.processAutoReady();}catch(e){this.world=structuredClone(this.committed);throw e;}});this.queue=task.then(()=>{},()=>{});return task;}
  async advanceWorld(){
   await advanceRound(this.world,this.env);
   for(const manager of this.world.managers){if(manager.autoReady?.enabled){manager.autoReady.nextAt=this.world.round<38?this.now()+manager.autoReady.minutes*60000:null;manager.autoReady.message=this.world.round===38?'Paused at season end. Start the next season to resume.':null;}}
@@ -29,12 +31,18 @@ export class LeagueWorld{
   else if(world.managers.some(m=>m.ready)&&!world.deadline)world.deadline=this.now()+DAY;
   world.revision++;await this.persist();
  }
+ async flushOwnership(){
+  if(!this.world?.pendingOwnership?.length)return;
+  for(const transfer of [...this.world.pendingOwnership]){try{await marketCall(this.env,'reassign',transfer);}catch{continue;}this.world.pendingOwnership=this.world.pendingOwnership.filter(p=>p.dealId!==transfer.dealId);this.world.revision++;await this.persist();}
+  if(this.world.pendingOwnership.length)await this.persist();
+ }
  async flushSales(){
   if(!this.world?.pendingSales?.length)return;
   for(const sale of [...this.world.pendingSales]){try{await marketCall(this.env,'resell',sale);}catch{continue;}this.world.pendingSales=this.world.pendingSales.filter(p=>p.saleId!==sale.saleId);this.world.revision++;await this.persist();}
   if(this.world.pendingSales.length)await this.persist();
  }
  async sellPlayer(manager,args){
+  if(this.world.pendingOwnership?.some(p=>p.playerId===args.id))throw fail(409,'This player’s transfer is still being confirmed. Try again shortly.');
   const world=this.world,game=createGame({initialState:project(world,manager)}),player=structuredClone(game.state.squad.find(p=>p.id===args.id));
   if(player)player.value=game.currentPlayerValue(player);
   actions.sell(game,args);game.save();storeCareer(world,manager,game);
@@ -51,11 +59,18 @@ export class LeagueWorld{
  else if(event.type==='award'){if(!hold||hold.bidId!==event.bidId||hold.amount!==event.amount||career.squad.length>=25)return reply({applied:false});if(!career.squad.some(p=>p.id===event.playerId))career.squad.push(event.player);delete career.auctionHolds[event.playerId];career.ledger.unshift({round:world.round+1,label:'Auction won · '+event.player.name+' · £'+event.amount.toLocaleString('en-GB'),amount:0});career.news.unshift({season:world.season,week:world.round+1,text:'Auction won: '+event.player.name+' joins your club for £'+event.amount.toLocaleString('en-GB')+'. The bid funds were already held.'});}
  else return reply({applied:false});career.news=career.news.slice(0,30);career.ledger=career.ledger.slice(0,90);world.marketEvents[event.id]=true;world.revision++;await this.persist();return reply({applied:true});}
  async handle(request){const url=new URL(request.url);if(url.pathname==='/internal/market'&&request.method==='POST'){let event;try{event=await request.json();}catch{throw fail(400,'Invalid market event.');}return this.marketEvent(event);}
- const match=url.pathname.match(/^\/api\/worlds\/([A-Z0-9-]{4,20})\/(join|state|action|bid|auto-ready)$/);if(!match)throw fail(404,'Endpoint not found.');const [,code,endpoint]=match;if(this.world&&this.world.code!==code)throw fail(400,'Wrong world.');if(request.method==='POST'){const origin=request.headers.get('Origin');if(origin&&origin!==url.origin)throw fail(403,'Use the game page to make changes.');if(Number(request.headers.get('Content-Length')||0)>2048)throw fail(413,'Request too large.');}
+ const match=url.pathname.match(/^\/api\/worlds\/([A-Z0-9-]{4,20})\/(join|state|action|bid|auto-ready|club|offer)$/);if(!match)throw fail(404,'Endpoint not found.');const [,code,endpoint]=match;if(this.world&&this.world.code!==code)throw fail(400,'Wrong world.');if(request.method==='POST'){const origin=request.headers.get('Origin');if(origin&&origin!==url.origin)throw fail(403,'Use the game page to make changes.');if(Number(request.headers.get('Content-Length')||0)>2048)throw fail(413,'Request too large.');}
  if(endpoint==='join'&&request.method==='POST'){const body=await readBody(request),name=cleanClubName(body.clubName);if(!this.world){this.world=newWorld(code);await refreshMarkets(this.world,this.env);}const world=this.world;if(Object.values(world.leagues).flat().some(c=>nameKey(c.name)===nameKey(name)))throw fail(409,'That club name is already used in this world.');const club=world.leagues[3].find(c=>!world.managers.some(m=>m.clubId===c.id));if(!club)throw fail(409,'League 3 has no free clubs. Use another world code or wait for a new season.');const key=token(),manager={id:crypto.randomUUID(),clubId:club.id,tokenHash:await digest(key),ready:false};club.name=name;world.managers.push(manager);const game=createGame({seedNames:world.usedNames});newIds(world,game.state.squad);game.autoPick();game.state.auctionHolds={};game.state.news=[{season:world.season,week:world.round+1,text:'Welcome to '+name+' in shared world '+code+'. Transfer auctions are global across all worlds. '+(world.round?'You take over the club’s existing league record.':'All clubs begin in League 3.')}];storeCareer(world,manager,game);await refreshMarkets(world,this.env);world.revision++;await this.persist();return reply({...snapshot(world,manager),managerKey:key},201);}
  if(!this.world)throw fail(404,'That world has not been created.');const raw=request.headers.get('Authorization')?.replace(/^Bearer /,'')||'';if(!/^[a-f0-9]{64}$/.test(raw))throw fail(401,'Enter your manager key.');const hash=await digest(raw),manager=this.world.managers.find(m=>m.tokenHash===hash);if(!manager)throw fail(401,'This key does not belong to this world.');const world=this.world;
+ if(expireOffers(world,this.now())){world.revision++;await this.persist();}
+ if(endpoint==='club'&&request.method==='GET')return reply(squadView(world,Number(url.searchParams.get('clubId'))));
  for(const id of Object.keys(world.careers[manager.id].auctionHolds||{}))await this.submitPending(manager,id,true);await refreshMarkets(world,this.env);
- if(endpoint==='state'&&request.method==='GET')return reply(snapshot(world,manager));if(!['action','bid','auto-ready'].includes(endpoint)||request.method!=='POST')throw fail(405,'Method not allowed.');const body=await readBody(request);if(endpoint==='bid')body.action='bid';if(endpoint==='auto-ready')body.action='autoReady';if(body.season!==world.season||body.round!==world.round)throw fail(409,'The matchday has advanced. Refresh and try again.');const args=body.args||{};
+ if(endpoint==='state'&&request.method==='GET')return reply(snapshot(world,manager));if(!['action','bid','auto-ready','offer'].includes(endpoint)||request.method!=='POST')throw fail(405,'Method not allowed.');const body=await readBody(request);if(endpoint==='bid')body.action='bid';if(endpoint==='auto-ready')body.action='autoReady';if(body.season!==world.season||body.round!==world.round)throw fail(409,'The matchday has advanced. Refresh and try again.');const args=body.args||{};
+ const directActions=['offerPlayer','acceptOffer','rejectOffer','cancelOffer'];
+ if(endpoint==='offer'&&!directActions.includes(body.action))throw fail(400,'Unknown transfer offer action.');
+ if(directActions.includes(body.action)){
+  directOfferAction(world,manager,body.action,args,this.now());world.revision++;await this.persist();await this.flushOwnership();return reply(snapshot(world,manager));
+ }
  if(body.action==='autoReady'){
   if(typeof args.enabled!=='boolean')throw fail(400,'Choose Auto-ready on or off.');
   const minutes=args.enabled?args.minutes:(manager.autoReady?.minutes||5);

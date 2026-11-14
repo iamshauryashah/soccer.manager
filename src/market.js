@@ -13,6 +13,16 @@ export class TransferMarket{
  view(division,world,manager){return Object.values(this.data.listings).filter(p=>p.division===division&&['available','open'].includes(p.status)).map(p=>({...p.player,auction:{resale:!!p.resale,sourceClub:p.sourceClub||null,status:p.status,highBid:p.high?.amount||0,nextBid:p.high?p.high.amount+increment(p.high.amount):p.player.value,endsAt:p.endsAt,leadingClub:p.high?.club||null,leadingWorld:p.high?.world||null,leadingManager:p.high?.manager||null,isLeading:!!p.high&&p.high.world===world&&p.high.manager===manager}}));}
  async fetch(request){try{const result=await this.enqueue(async()=>{let body;try{body=await request.json();}catch{throw error(400,'Invalid market request.');}if(!body||typeof body!=='object')throw error(400,'Invalid market request.');if(this.closeDue())await this.persist();const route=new URL(request.url).pathname;
  if(route==='/catalog'){if(![1,2,3].includes(body.division))throw error(400,'Unknown division.');return{players:this.view(body.division,body.world,body.manager)};}
+ if(route==='/reassign'){
+  this.data.directReceipts??={};const saved=this.data.directReceipts[body.dealId];
+  if(saved){if(saved.playerId!==body.playerId||saved.world!==body.world||saved.from!==body.from||saved.to!==body.to)throw error(409,'Transfer identity conflict.');return saved;}
+  if(typeof body.dealId!=='string'||!body.dealId||!body.world||!body.from||!body.to)throw error(400,'Invalid direct transfer.');
+  const listing=this.data.listings[body.playerId];
+  if(listing?.status==='settling'&&listing.high?.world===body.world&&listing.high?.manager===body.from)throw error(503,'Previous ownership is still settling.');
+  if(listing?.status!=='sold'||listing.owner?.world!==body.world||listing.owner?.manager!==body.from)throw error(409,'The selling club does not own this market player.');
+  listing.owner={world:body.world,manager:body.to,club:body.club,amount:body.amount};
+  const receipt={dealId:body.dealId,playerId:body.playerId,world:body.world,from:body.from,to:body.to};this.data.directReceipts[body.dealId]=receipt;await this.persist();return receipt;
+ }
  if(route==='/resell'){
   this.data.saleReceipts??={};const saved=this.data.saleReceipts[body.saleId];
   if(saved){if(saved.world!==body.world||saved.manager!==body.manager||saved.originalId!==body.player?.id)throw error(409,'Sale identity conflict.');return saved;}
