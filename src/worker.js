@@ -106,4 +106,27 @@ export class LeagueWorld{
  await refreshMarkets(world,this.env);world.revision++;await this.persist();return reply(snapshot(world,manager));
  }
 }
-export default{async fetch(request,env){const url=new URL(request.url);if(url.pathname==='/api/health')return reply({online:!!env.LEAGUE_WORLDS,auctions:!!env.TRANSFER_MARKET});if(url.pathname.startsWith('/api/')){const match=url.pathname.match(/^\/api\/worlds\/([^/]+)\//),code=match?.[1];if(!/^[A-Z0-9-]{4,20}$/.test(code||''))return reply({error:'Invalid world code.'},400);if(!env.LEAGUE_WORLDS)return reply({error:'Shared leagues are not configured.'},503);return env.LEAGUE_WORLDS.get(env.LEAGUE_WORLDS.idFromName(code)).fetch(request);}return env.ASSETS.fetch(request);}};
+// Account entitlements are checked at the public Worker edge, before forwarding
+// commands to a Durable Object. Never trust a role supplied by the browser.
+async function autoReadyPermission(request,env){
+ if(!env.AUTH_SERVICE)return null;
+ try{
+  const verified=await env.AUTH_SERVICE.fetch(new Request('https://auth.shauryaswebsites.com/api/feature-access/touchline-auto-ready',{
+   method:'GET',headers:{Cookie:request.headers.get('Cookie')||''}
+  }));
+  if(!verified.ok)return null;
+  const decision=await verified.json();
+  return typeof decision.allowed==='boolean'?decision.allowed:null;
+ }catch{return null;}
+}
+export default{async fetch(request,env){const url=new URL(request.url);if(url.pathname==='/api/health')return reply({online:!!env.LEAGUE_WORLDS,auctions:!!env.TRANSFER_MARKET});if(url.pathname.startsWith('/api/')){
+ const isTimerEndpoint=/^\/api\/worlds\/[A-Z0-9-]{4,20}\/(auto-ready|action)$/.test(url.pathname);
+ if(request.method==='POST'&&isTimerEndpoint){
+   let data;try{data=await request.clone().json();}catch{return reply({error:'Invalid request.'},400);}
+   const enabling=data?.args?.enabled===true&&(url.pathname.endsWith('/auto-ready')||data?.action==='autoReady');
+   if(enabling){
+     const allowed=await autoReadyPermission(request,env);
+     if(allowed!==true)return reply({error:allowed===false?'Upgrade to Premium':'Unable to verify Premium access. Try again.'},allowed===false?403:503);
+   }
+ }
+const match=url.pathname.match(/^\/api\/worlds\/([^/]+)\//),code=match?.[1];if(!/^[A-Z0-9-]{4,20}$/.test(code||''))return reply({error:'Invalid world code.'},400);if(!env.LEAGUE_WORLDS)return reply({error:'Shared leagues are not configured.'},503);return env.LEAGUE_WORLDS.get(env.LEAGUE_WORLDS.idFromName(code)).fetch(request);}return env.ASSETS.fetch(request);}};
