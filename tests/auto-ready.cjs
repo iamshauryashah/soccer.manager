@@ -35,7 +35,12 @@ const {harness}=require('./helpers/online-harness.cjs');
  ctx.addEventListener=()=>{};ctx.fetch=async()=>({ok:true,json:async()=>({allowed:true})});
  const endpoints=[];ctx.onlineRequest=async(endpoint,body)=>{endpoints.push(endpoint);const x=await solo.api('SINGLE',endpoint,key,body);if(x.status>=400)throw Error(x.data.error);return x.data;};vm.createContext(ctx);vm.runInContext(fs.readFileSync('public/online-game.js','utf8'),ctx);
  await new Promise(resolve=>setTimeout(resolve,0));
- assert.match(nodes['#online-world'].innerHTML,/Auto-ready: ON · 5 min/);ctx.configureAutoReady();assert.match(nodes['#modal'].innerHTML,/value="5"/);ctx.document.querySelector('#auto-ready-minutes').value='7';await ctx.saveAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.minutes,7);assert.equal(nodes['#modal'].open,false);assert.equal(endpoints[0],'auto-ready');await ctx.stopAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.enabled,false);
+ assert.match(nodes['#online-world'].innerHTML,/Auto-ready: ON · 5 min/);
+ vm.runInContext('autoReadyAllowed=false;renderOnlineControls()',ctx);
+ assert.match(nodes['#online-world'].innerHTML,/Upgrade to Premium/);
+ assert.match(nodes['#online-world'].innerHTML,/disabled[^>]*title="Upgrade to Premium"/);
+ vm.runInContext('autoReadyAllowed=true;renderOnlineControls()',ctx);
+ ctx.configureAutoReady();assert.match(nodes['#modal'].innerHTML,/value="5"/);ctx.document.querySelector('#auto-ready-minutes').value='7';await ctx.saveAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.minutes,7);assert.equal(nodes['#modal'].open,false);assert.equal(endpoints[0],'auto-ready');await ctx.stopAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.enabled,false);
  assert.equal(endpoints[1],'auto-ready');
  // The premium gate denies activation, while permitting the free stop action.
  h.setAutoReadyAccess(false);
