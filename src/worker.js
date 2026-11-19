@@ -119,7 +119,10 @@ async function autoReadyPermission(request,env){
   return typeof decision.allowed==='boolean'?decision.allowed:null;
  }catch{return null;}
 }
-export default{async fetch(request,env){const url=new URL(request.url);if(url.pathname==='/api/health')return reply({online:!!env.LEAGUE_WORLDS,auctions:!!env.TRANSFER_MARKET});if(url.pathname.startsWith('/api/')){
+export default{async fetch(request,env){const url=new URL(request.url);if(url.pathname==='/api/health')return reply({online:!!env.LEAGUE_WORLDS,auctions:!!env.TRANSFER_MARKET});if(url.pathname==='/api/feature-access/auto-ready'&&request.method==='GET'){
+ const allowed=await autoReadyPermission(request,env);
+ return reply({allowed:allowed===true},allowed===null?503:200);
+}if(url.pathname.startsWith('/api/')){
  const isTimerEndpoint=/^\/api\/worlds\/[A-Z0-9-]{4,20}\/(auto-ready|action)$/.test(url.pathname);
  if(request.method==='POST'&&isTimerEndpoint){
    let data;try{data=await request.clone().json();}catch{return reply({error:'Invalid request.'},400);}
