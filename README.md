@@ -84,3 +84,15 @@ The **Clubs & Offers** tab lets authenticated managers inspect other managed squ
 Interest prompts appear on the normal online refresh (about eight seconds) and queue behind an existing dialog. Responses are saved centrally, so a recorded decline is not repeatedly prompted. Joining a different league or deleting a club removes its unanswered invitations. In-progress auctions from older releases keep their existing rules.
 
 Generated transfer batches now use balanced rating bands across each league’s published range. A fresh League 2 batch contains at least three 80+ OVR players. After a matchday completes in any world, unsold generated listings are replaced by one fresh global batch per league; all worlds see the same replacements. Active interest checks, open/settling auctions, owned players and club-resale listings are preserved. Refresh receipts make matchday retries idempotent. Existing markets receive a one-time balanced refresh when adopting this version. Other managers may buy the strongest listings before a particular manager sees them.
+
+## Premium Auto-ready entitlement
+
+The online game retains free/manual match readiness for everyone. The Auto-ready timer is now governed by Shaurya's Websites **Admin → Feature access → Touchline · Auto-ready**, initially **Premium and Admin only**. Guest and Standard users see the disabled Auto-ready control with the tooltip **Upgrade to Premium**. The stop-timer action remains available even after eligibility is lost.
+
+Touchline calls its same-origin `/api/feature-access/auto-ready` endpoint for UI state and rechecks permission **on the server** when a manager enables/updates a timer. The server forwards the caller's platform session cookie to the central User Management Worker over a Cloudflare `AUTH_SERVICE` service binding, and rejects unauthorized changes with HTTP 403. Missing/failed entitlement verification fails closed (503), but ordinary league play remains available.
+
+The account authentication cookie must be valid on the canonical `soccermanager.shauryaswebsites.com` domain. The manager key continues to authorize the particular club; platform login controls only entitlement to the premium feature.
+
+Deploy User Management with migration `0004_feature_access.sql` first, then deploy Touchline with its new service binding.
+
+Existing Auto-ready alarms created before the gate (or before an account's access is revoked) are not cancelled retroactively by the feature policy. They can still be stopped using Stop Auto-ready. Future work should associate timer ownership with verified platform identities and recheck revocations when alarms execute.
