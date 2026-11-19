@@ -32,9 +32,21 @@ const {harness}=require('./helpers/online-harness.cjs');
  r=await solo.action('SINGLE',key,'ready',{ready:true});assert.equal(r.data.state.season,2);assert.equal(r.data.state.round,0);assert.equal(r.data.world.autoReady.nextAt,solo.clock.now+300000);
  // Rendered controls allow a custom interval and stop through the authenticated API.
  const nodes={},snap=await solo.state('SINGLE',key),ctx={Math,Date,console,setTimeout:()=>0,clearTimeout(){},setInterval(){},localStorage:{setItem(){},removeItem(){}},onlineSnapshot:snap,onlineProfile:{code:'SINGLE',key},document:{querySelector(s){return nodes[s]??={innerHTML:'',textContent:'',value:'',className:'',open:false,showModal(){this.open=true},close(){this.open=false}};}}};ctx.window=ctx;
+ ctx.addEventListener=()=>{};ctx.fetch=async()=>({ok:true,json:async()=>({allowed:true})});
  const endpoints=[];ctx.onlineRequest=async(endpoint,body)=>{endpoints.push(endpoint);const x=await solo.api('SINGLE',endpoint,key,body);if(x.status>=400)throw Error(x.data.error);return x.data;};vm.createContext(ctx);vm.runInContext(fs.readFileSync('public/online-game.js','utf8'),ctx);
+ await new Promise(resolve=>setTimeout(resolve,0));
  assert.match(nodes['#online-world'].innerHTML,/Auto-ready: ON · 5 min/);ctx.configureAutoReady();assert.match(nodes['#modal'].innerHTML,/value="5"/);ctx.document.querySelector('#auto-ready-minutes').value='7';await ctx.saveAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.minutes,7);assert.equal(nodes['#modal'].open,false);assert.equal(endpoints[0],'auto-ready');await ctx.stopAutoReady();assert.equal((await solo.state('SINGLE',key)).world.autoReady.enabled,false);
  assert.equal(endpoints[1],'auto-ready');
+ // The premium gate denies activation, while permitting the free stop action.
+ h.setAutoReadyAccess(false);
+ const denied=await h.action('TIMERS',a,'autoReady',{enabled:true,minutes:5});
+ assert.equal(denied.status,403);
+ assert.match(denied.data.error,/Upgrade to Premium/);
+ const stop=await h.action('TIMERS',a,'autoReady',{enabled:false});
+ assert.equal(stop.status,200);
+ h.setAutoReadyAccess(true);
+ const allowed=await h.action('TIMERS',a,'autoReady',{enabled:true,minutes:5});
+ assert.equal(allowed.status,200);
  assert.equal((await solo.api('SINGLE','auto-ready',null,{args:{enabled:false},season:2,round:0})).status,401);
  console.log('PASS: configurable offline auto-ready timers, multi-manager waiting, restart persistence, one match per interval, stop/unready, interval validation, lineup repair/pause, season-end pause/resume and UI controls.');
 })().catch(e=>{console.error(e);process.exit(1)});
